@@ -20,3 +20,5 @@
 - Spilled artifacts accumulate in a directory the core does not own, which raises a cleanup question the core cannot answer alone (charted as a ticket on the map).
 
 **Amendment (2026-09-11)**: `spilled` settled as `SpillInfo[]`, not a single object — `videoIds` is a list and `detail: "full"` applies to each entry, so one call can spill several videos.
+
+**Amendment 2 (2026-09-11)**: the action seam grew while the authorization flow was specified. The action set is five, not three: `authorize`, `deauthorize`, `status`, `set-api-key`, `clear-api-key` — the api key is the default source for every capability but subscriptions, so it needed a way in. `ActionContext` gained an optional `prompt`, which is the only possible fallback when a loopback callback cannot reach the process (a remote machine, a taken port, a browser that swallows the redirect): the user pastes the callback URL back. And `ActionResult` gained the same `ok` / `error { code, hint, retryable }` channel that tools use, so a host renders tools and actions through one code path instead of reading prose. The core still owns the state machine; hosts still only render.
