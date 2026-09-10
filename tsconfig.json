@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "extensions/**/*.ts",
+    "adapters/**/*.ts",
+    "tools/**/*.ts",
+    "lib/**/*.ts",
+    "bin/**/*.mjs",
+    "tests/**/*.mjs"
+  ]
+}

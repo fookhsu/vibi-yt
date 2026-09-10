@@ -1,0 +1,71 @@
+# Examples
+
+Workflow patterns for **vibi** inside Pi.
+
+## Configure auth
+
+```txt
+/youtube:key:set
+/youtube:key
+```
+
+Or set `YOUTUBE_API_KEY` before starting Pi. Environment variables override stored keys.
+
+## Search → details → transcript
+
+Typical research flow:
+
+1. Search for videos on a topic.
+2. Pull metadata for promising `videoId` values.
+3. Fetch transcript segments when spoken content matters.
+
+Ask Pi in natural language, for example:
+
+```txt
+Search YouTube for "Roblox Hunty Zombie gameplay" and summarize the top results.
+```
+
+```txt
+Get details for video dQw4w9WgXcQ, including the description.
+```
+
+```txt
+Get the hook and outro transcript for https://www.youtube.com/watch?v=dQw4w9WgXcQ in English.
+```
+
+## Tool parameters (reference)
+
+### `youtube_search`
+
+- `query` — search text (required)
+- `maxResults` — 1–10, default 5
+- `order` — `relevance`, `date`, or `viewCount`
+
+### `youtube_video_details`
+
+- `videoId` or `videoIds` — ID or URL (required)
+- `includeDescription` — include truncated description (default false)
+
+### `youtube_transcript`
+
+- `videoId` or `videoIds` — ID or URL (required)
+- `lang` — caption language code, default `en`
+- `format` — `excerpt` (default) or `full_text`
+
+If a transcript is unavailable, the tool still returns `details.transcripts[videoId]` as `null`. Check `details.transcriptDiagnostics[videoId]` for the attempted language, reason code, short message, and next action (for example: retry later, try another `lang`, or choose another video).
+
+## Local development
+
+Load the package from a checkout:
+
+```bash
+pi -e .
+```
+
+Then run `/youtube:key:set` and exercise the tools in a Pi session.
+
+## Other agents
+
+Pi is one of three adapters. For MCP clients (Claude Code, Cursor, Codex) and
+for JSON function calling (OpenAI, Anthropic, custom loops), see
+[`adapters.md`](adapters.md).
