@@ -7,7 +7,7 @@ vibi-yt 把 YouTube 的**只读**能力以工具形式交给编码 agent，先�
 ### 凭据
 
 **Credential source**:
-插件取到调用权限的来源：API key、OAuth 授权、或没有。状态命令只报来源，永不报值。
+插件取到调用权限的来源。解析是**按能力取**的：Subscription 只认 Authorization，其余 Capability 优先 API key。状态命令只报来源，永不报值。
 _Avoid_: login, session, account
 
 **API key**:
@@ -19,7 +19,7 @@ _Avoid_: token, secret, app key
 _Avoid_: login, sign-in, session
 
 **Client json**:
-用户在自己的 Google Cloud 项目里创建 OAuth 客户端后下载的凭据文件。顶层键标出客户端类型（`web` 或 `installed`），插件从它读 `client_id` / `client_secret`。
+用户在自己的 Google Cloud 项目里创建 OAuth 客户端后下载的凭据文件。顶层键标出客户端类型（`web` 或 `installed`），插件从它读 `client_id` / `client_secret`。**就地在原位读，不复制**；路径来自环境变量或约定位置。
 _Avoid_: credentials.json, oauth config, app secret
 
 **Testing status**:
@@ -27,8 +27,16 @@ Google consent screen 的发布状态之一。此状态下授权与 refresh toke
 _Avoid_: dev mode, sandbox, unpublished
 
 **Refresh token**:
-可换取新 access token 的长期凭据，只在首次同意时返回。它的失效方式决定「授权能活多久」。
+可换取新 access token 的长期凭据，只在首次同意时返回。它失效与否**只有 Google 说 `invalid_grant` 才算**——本地记的到期时间不可靠。
 _Avoid_: offline token, long-lived token
+
+**Access token**:
+一小时寿命的通行证，快到期时用 Refresh token 换新的。它不值钱，所以不落成环境变量、不进模型上下文。
+_Avoid_: bearer token, session token
+
+**Credential file**:
+插件自己写的凭据文件（API key 与 OAuth token 各一），落在 `getAgentDir()` 下，**文件 0600 · 目录 0700**，写入先过写队列。它和 Client json 不是一回事：那个是用户下回来的，这个是我们写出去的。
+_Avoid_: auth file, secrets file, keystore, config
 
 ### 能力与集成
 
@@ -45,7 +53,7 @@ Capability 暴露给**模型**的形式：名字、描述、JSON Schema、handle
 _Avoid_: function, command, endpoint
 
 **Action**:
-Capability 暴露给**用户**的形式：`authorize` / `status` / `deauthorize`。用户触发，不是模型触发——授权是同意行为，不该由模型引起副作用。
+Capability 暴露给**用户**的形式：`authorize` / `deauthorize` / `status` / `set-api-key` / `clear-api-key`。用户触发，不是模型触发——授权是同意行为，不该由模型引起副作用。动作名保持中性，**宿主把它映射成自己的命令名**。
 _Avoid_: command, slash command, operation, login
 
 **Host**:
