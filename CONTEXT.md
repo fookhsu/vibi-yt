@@ -1,6 +1,6 @@
 # vibi-yt
 
-vibi-yt 把 YouTube 的**只读**能力以工具形式交给编码 agent，先做 Pi。这份文件只是词汇表：这里定义词，不定义实现（实现形态见 `.scratch/vibi/map.md`）。
+vibi-yt 把 YouTube 的**只读**能力以**工具**（给模型）与**动作**（给用户）两条 seam 交给编码 agent，先做 Pi。这份文件只是词汇表：这里定义词，不定义实现（设计与决策见 map issue #1）。
 
 ## Language
 
@@ -19,31 +19,27 @@ _Avoid_: token, secret, app key
 _Avoid_: login, sign-in, session
 
 **Client json**:
-用户在自己的 Google Cloud 项目里创建 OAuth 客户端后下载的凭据文件。顶层键标出客户端类型（`web` 或 `installed`），插件从它读 `client_id` / `client_secret`。**就地在原位读，不复制**；路径来自环境变量或约定位置。
+用户在自己的 Google Cloud 项目里创建 OAuth 客户端后下载的凭据文件。顶层键标出客户端类型（`web` 或 `installed`），插件从它读 `client_id` / `client_secret`。**就地在原位读，不复制。**
 _Avoid_: credentials.json, oauth config, app secret
 
 **Redirect URI**:
-授权完毕后 Google 把浏览器送去的那一个地址，也就是回环服务器的地址。**它由客户端类型决定**：`installed` 允许任意端口，`web` 必须与 Console 里登记的值**精确一致**（所以 `web` 类型不能换端口）。
+授权完毕后 Google 把浏览器送去的那一个地址，也就是回环服务器的地址。**它由客户端类型决定**：`installed` 允许任意端口，`web` 必须与 Console 里登记的值**精确一致**。
 _Avoid_: callback URL, loopback address, return URL
 
 **Publishing status**:
-Google consent screen 的发布状态：Testing 或 In production。Testing 下授权与 refresh token **7 天后失效**；In production 即解除。插件**检测不到**它属于哪一种，所以相关的提醒只能是条件句。
-_Avoid_: app status, verification status, consent mode
-
-**Testing status**:
-Google consent screen 的发布状态之一。此状态下授权与 refresh token **在授权后 7 天失效**；切到 In production 即解除。插件只提醒，替用户决定的是用户。
-_Avoid_: dev mode, sandbox, unpublished
+Google consent screen 的发布状态，取值 Testing 或 In production。Testing 下授权与 refresh token **7 天后失效**；In production 即解除。插件**检测不到**它属于哪一种，所以相关的提醒只能是条件句。
+_Avoid_: app status, verification status, consent mode, testing status
 
 **Refresh token**:
-可换取新 access token 的长期凭据，只在首次同意时返回。它失效与否**只有 Google 说 `invalid_grant` 才算**——本地记的到期时间不可靠。
+可换取新 access token 的长期凭据，只在首次同意时返回。它失效与否**只有 Google 说 `invalid_grant` 才算**。
 _Avoid_: offline token, long-lived token
 
 **Access token**:
-一小时寿命的通行证，快到期时用 Refresh token 换新的。它不值钱，所以不落成环境变量、不进模型上下文。
+一小时寿命的通行证，快到期时用 Refresh token 换新的。
 _Avoid_: bearer token, session token
 
 **Credential file**:
-插件自己写的凭据文件（API key 与 OAuth token 各一），落在 `getAgentDir()` 下，**文件 0600 · 目录 0700**，写入先过写队列。它和 Client json 不是一回事：那个是用户下回来的，这个是我们写出去的。
+插件自己写的凭据文件（API key 与 OAuth token 各一）。它和 Client json 不是一回事：那个是用户下回来的，这个是我们写出去的。
 _Avoid_: auth file, secrets file, keystore, config
 
 ### 能力与集成
@@ -61,8 +57,12 @@ Capability 暴露给**模型**的形式：名字、描述、JSON Schema、handle
 _Avoid_: function, command, endpoint
 
 **Action**:
-Capability 暴露给**用户**的形式：`authorize` / `deauthorize` / `status` / `set-api-key` / `clear-api-key`。用户触发，不是模型触发——授权是同意行为，不该由模型引起副作用。动作名保持中性，**宿主把它映射成自己的命令名**。
+Capability 暴露给**用户**的形式：`authorize` / `deauthorize` / `status` / `set-api-key` / `clear-api-key`。用户触发，不是模型触发——授权是同意行为，不该由模型引起副作用。动作名保持中性。
 _Avoid_: command, slash command, operation, login
+
+**Command**:
+宿主把 Action 暴露成的可输入名字（Pi 上是 `/youtube:authorize` 这类）。**名字是宿主的，动作是 core 的**——所以换一个宿主，动作不变、命令名可以变。
+_Avoid_: verb, subcommand, shortcut
 
 **Host**:
 能表达 JSON Schema 并调用函数的任意 agent 运行时。Pi 是当前的第一个宿主，不是唯一一个。
@@ -77,11 +77,11 @@ Capability 与 Host 之间的边界，vibi 有**两条**：Tool 给模型，Acti
 _Avoid_: interface, abstraction layer, plugin API
 
 **Spill**:
-结果超过阈值（8,000 字符）时把**全文落盘**为 JSONL（一行 = 一个字幕段），只把预览与指针交回宿主。落盘用 `videoId` 兜住同名覆盖。它**不是截断**：没有任何内容被丢掉。
+结果超过阈值（8,000 字符）时把**全文落盘**为 JSONL，只把预览与指针交回宿主。它**不是截断**：没有任何内容被丢掉。
 _Avoid_: dump, export, cache, truncate
 
 **Preview**:
-Spill 发生时交回宿主的两段窗口：开窗与收窗，各 2,000 字符。缩略图式的定向信息，不是摘要。
+交回宿主的两个文本窗口：开窗与收窗，各 2,000 字符。它是缩略图式的**定向信息**，不是摘要。`compact` 只给预览；溢写时预览是通往全文的入口。
 _Avoid_: excerpt, snippet, summary
 
 **Render fields**:
