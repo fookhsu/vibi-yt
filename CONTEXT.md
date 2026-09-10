@@ -85,7 +85,7 @@ _Avoid_: dump, export, cache, truncate
 _Avoid_: excerpt, snippet, summary
 
 **Render fields**:
-宿主渲染结果时**必须**呈现的事实：`truncated` / `spilled`（数组）/ `preview` / `records`。「发生过什么」是字段，「怎么读」是宿主的事——所以 `truncated` 永远是布尔字段，永远不是一句可能被省略的散文。
+宿主渲染结果时**必须**呈现的事实：`truncated` / `spilled`（数组）/ `preview` / `records`。「发生过什么」是字段，「怎么读」是宿主的事——所以 `truncated` 永远是布尔字段，永远不是一句可能被省略的散文。它说的是**相对全文有损失**，不是「相对本次请求有损失」：`compact` 在长内容上会截短，所以它置 `true`；内容短到开窗+收窗即覆盖全文时置 `false`。
 _Avoid_: metadata, envelope, details
 
 **Detail**:
