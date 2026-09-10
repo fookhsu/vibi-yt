@@ -69,5 +69,13 @@ Spill 发生时交回宿主的两段窗口：开窗与收窗，各 2,000 字符�
 _Avoid_: excerpt, snippet, summary
 
 **Render fields**:
-宿主渲染结果时**必须**呈现的事实：`truncated` / `spilled` / `preview` / `records`。「发生过什么」是字段，「怎么读」是宿主的事——所以 `truncated` 永远是布尔字段，永远不是一句可能被省略的散文。
+宿主渲染结果时**必须**呈现的事实：`truncated` / `spilled`（数组）/ `preview` / `records`。「发生过什么」是字段，「怎么读」是宿主的事——所以 `truncated` 永远是布尔字段，永远不是一句可能被省略的散文。
 _Avoid_: metadata, envelope, details
+
+**Detail**:
+结果的详略档位，只有两个值：`compact`（只给预览，**永不落盘**）与 `full`（全都给，装不下就溢写）。Search 没有这个档位。
+_Avoid_: format, mode, verbosity, include
+
+**Failure code**:
+失败的**闭集**标签（`not_authorized` / `quota_exceeded` / `not_found` / `transcript_unavailable` / `invalid_input` / `network_or_upstream_error` / `unknown_tool`），每个带一句可执行的 `hint` 与一个 `retryable` 布尔。它回答的是「换个说法重试有没有意义」。
+_Avoid_: error type, status, error message

@@ -18,3 +18,5 @@
 - Every new host implements two mappings, not one, and must render `truncated` / `spilled` faithfully. A host that renders nothing useful is a bug in the host, not in the core.
 - The context budget stays centralised: the threshold constant, the preview windows, and the spill mechanics live in the core, so no host gets to decide what "too long" means.
 - Spilled artifacts accumulate in a directory the core does not own, which raises a cleanup question the core cannot answer alone (charted as a ticket on the map).
+
+**Amendment (2026-09-11)**: `spilled` settled as `SpillInfo[]`, not a single object — `videoIds` is a list and `detail: "full"` applies to each entry, so one call can spill several videos.
