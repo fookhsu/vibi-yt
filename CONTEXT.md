@@ -41,8 +41,12 @@ YouTube 侧的一件只读事（搜索、视频详情、字幕、订阅），与
 _Avoid_: feature, endpoint, API call
 
 **Tool**:
-Capability 暴露给模型的形式：名字、描述、JSON Schema、handler。名字用 `youtube_*`，因为模型选工具时要知道的是能力，不是包名。
-_Avoid_: function, action, command
+Capability 暴露给**模型**的形式：名字、描述、JSON Schema、handler。名字用 `youtube_*`，因为模型选工具时要知道的是能力，不是包名。它返回 `data` 与 render fields，**不返回给模型读的文本**。
+_Avoid_: function, command, endpoint
+
+**Action**:
+Capability 暴露给**用户**的形式：`authorize` / `status` / `deauthorize`。用户触发，不是模型触发——授权是同意行为，不该由模型引起副作用。
+_Avoid_: command, slash command, operation, login
 
 **Host**:
 能表达 JSON Schema 并调用函数的任意 agent 运行时。Pi 是当前的第一个宿主，不是唯一一个。
@@ -53,5 +57,17 @@ _Avoid_: runtime, platform, client, agent SDK
 _Avoid_: integration, plugin, connector, driver
 
 **Seam**:
-Capability 与 Host 之间的那条边界。它的形状是 `.scratch/vibi/issues/04-grilling-seam-shape.md` 唯一的产出。
-_Avoid_: interface, abstraction layer
+Capability 与 Host 之间的边界，vibi 有**两条**：Tool 给模型，Action 给用户。两条都归 core 声明，宿主只做呈现。
+_Avoid_: interface, abstraction layer, plugin API
+
+**Spill**:
+结果超过阈值（8,000 字符）时把**全文落盘**为 JSONL（一行 = 一个字幕段），只把预览与指针交回宿主。落盘用 `videoId` 兜住同名覆盖。它**不是截断**：没有任何内容被丢掉。
+_Avoid_: dump, export, cache, truncate
+
+**Preview**:
+Spill 发生时交回宿主的两段窗口：开窗与收窗，各 2,000 字符。缩略图式的定向信息，不是摘要。
+_Avoid_: excerpt, snippet, summary
+
+**Render fields**:
+宿主渲染结果时**必须**呈现的事实：`truncated` / `spilled` / `preview` / `records`。「发生过什么」是字段，「怎么读」是宿主的事——所以 `truncated` 永远是布尔字段，永远不是一句可能被省略的散文。
+_Avoid_: metadata, envelope, details
