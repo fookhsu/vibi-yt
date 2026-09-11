@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/fookhsu/vibi-yt/compare/v0.2.0...v0.2.1) (2026-09-11)
+
+
+### Documentation
+
+* name the video discovery domain ([af2cb5f](https://github.com/fookhsu/vibi-yt/commit/af2cb5f56366162808e3f9d7e4b689e81d8501fd))
+
 ## 0.2.0
 
 A ground-up rewrite of `vibi-yt` around two seams and a read-only YouTube
