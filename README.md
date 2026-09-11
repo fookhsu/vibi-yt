@@ -1,5 +1,7 @@
 # vibi-yt
 
+**English** | [简体中文](README.zh-CN.md)
+
 Read-only YouTube capabilities for coding agents, as **tools** for the model and
 **actions** for you. Pi is the only consumer today.
 
@@ -68,6 +70,10 @@ The token is written to `<agentDir>/vibi-oauth-token.json` (mode `0600`). The
 access token is refreshed automatically about a minute before it expires; the
 refresh token is only ever considered dead when Google says `invalid_grant`.
 
+On a headless or remote machine, set `YOUTUBE_OAUTH_REFRESH_TOKEN` rather than
+copying the token file over. It takes precedence over the token file, and the
+client JSON from step 1 is still required — the refresh exchange needs it.
+
 Security notes: credential values never enter the model context, tool output,
 or the session log. `/youtube:status` reports sources and metadata only — never
 a value.
@@ -87,15 +93,50 @@ a value.
 Long content does not get silently cut:
 
 - A `detail: "full"` result over **8,000 characters** is written to a
-  `<title>-<videoId>.jsonl` artifact. You receive a preview (the opening and
-  closing 2,000-character windows) plus the path, and can read the file with
-  your own file tool. Nothing is lost.
+  `<title>-<videoId>.jsonl` artifact. The model gets a preview (the opening and
+  closing 2,000-character windows) plus the path, and reads the file with its
+  own file tool. Nothing is lost.
 - A `detail: "compact"` result never spills; it returns the preview windows
   only.
 - Every tool result carries the facts as fields: `truncated`, `spilled`,
-  `preview`, and `records`. `truncated: true` means you did not receive the
-  whole content and it is **not** retrievable from a spill file. A successful
-  spill is not truncation.
+  `preview`, and `records`. `truncated: true` means the model did not receive
+  the whole content and it is **not** retrievable from a spill file. A
+  successful spill is not truncation.
+
+## Quotas and limits
+
+- **Quota is finite, and `search` is the expensive one.** A Google Cloud project
+  gets 10,000 YouTube Data API v3 units per day by default, and `search.list`
+  has historically been metered at 100 units per call — 100 searches is a day's
+  budget. Newer projects may instead see `search.list` capped as its own
+  100-calls-per-day bucket. Either way: search sparingly. This is not a bulk
+  crawler.
+- **Transcripts are the weak point.** `youtube_transcript` does not go through
+  the Data API; it reads the caption track directly, so it is exposed to
+  breakage whenever YouTube changes the player or the timedtext endpoint.
+  Search, details, and subscriptions use the documented API and are not.
+- **Ten at a time.** Search returns at most 10 results with no pagination;
+  details and transcripts take at most 10 IDs per call.
+- **Not every video has captions, and not every language is present.**
+  `youtube_transcript` returns `transcript_unavailable` along with the languages
+  it did find.
+
+## vibi-yt and yt-dlp
+
+[yt-dlp][yd] is the reference tool for getting media *out* of YouTube. vibi-yt
+downloads nothing, and its unit of work is a tool call whose result lands in the
+model's context — not a file on disk.
+
+They are not competitors, and the overlap is worth stating bluntly: for most of
+what people mean by "get me this video", and for anything beyond these four
+capabilities — playlists, channels, comments, formats, live chat, or a site that
+is not YouTube — yt-dlp is the tool. Use yt-dlp when the output is a file; use
+vibi-yt when the output is a tool result.
+
+The head-to-head, including where yt-dlp wins, is
+[ADR 0004](docs/adr/0004-implement-the-capabilities-instead-of-shelling-out-to-yt-dlp.md).
+
+[yd]: https://github.com/yt-dlp/yt-dlp
 
 ## Environment variables
 
@@ -103,7 +144,7 @@ Long content does not get silently cut:
 | --- | --- |
 | `YOUTUBE_API_KEY` | API key (alternative to the stored key) |
 | `YOUTUBE_OAUTH_CLIENT_JSON` | Path to the Google OAuth client JSON (supports `~`) |
-| `YOUTUBE_OAUTH_REFRESH_TOKEN` | Refresh token for headless use (alternative to the token file) |
+| `YOUTUBE_OAUTH_REFRESH_TOKEN` | Refresh token for headless use (takes precedence over the token file) |
 | `YOUTUBE_OAUTH_REDIRECT_URI` | Registered redirect for a `web` client |
 
 `PI_CODING_AGENT_DIR` relocates the agent directory, and therefore all three
@@ -121,27 +162,24 @@ npm run ci        # typecheck + tests + pack check
 pi -e .           # try it from the working tree
 ```
 
-The architecture decisions live in `docs/adr/`; the vocabulary lives in
-`CONTEXT.md`.
+CI runs `npm run ci` on the `engines` floor (`22.19.0`) and on the LTS, so a
+green local `npm run ci` is the minimum for a pull request.
+
+Read `CONTEXT.md` before naming anything: its vocabulary is normative, and a
+concept that already has a word there should not arrive under a second one. The
+ADRs are constraints rather than history — ADR 0003 is why there is no build
+step, ADR 0002 is why the core returns no model-facing text. If you need a new
+word, add it to `CONTEXT.md` first.
 
 ## Releasing
 
-Every push to `main` is verified by CI on the `engines` floor (`22.19.0`) and
-on the LTS, then packed into the same tarball npm would receive. When the push
-carries Conventional Commits, [release-please][rp] opens a single Release PR:
-the version in `package.json`, the lockfile, and `CHANGELOG.md` move together,
-nothing else. Merging that PR is what tags the release; the tag is then
-dispatched to `publish.yml`, which publishes it to npm through
-[trusted publishing][tp] — OIDC, no `NPM_TOKEN`. Publishing keeps its own file
-because npm's trusted publisher is pinned to a workflow *filename*.
+Commit subjects are load-bearing: releases are cut from Conventional Commits, so
+`feat:` moves the minor and lands under **Added**, `fix:` under **Fixed**,
+`docs:` under **Documentation**, and `chore:`, `ci:`, `test:`, `build:`, and
+`style:` stay out of the changelog.
 
-So a commit subject is load-bearing: it decides the changelog section and the
-bump. `feat:` → Added, `fix:` → Fixed, `docs:` → Documentation; `chore:`, `ci:`,
-`test:`, `build:`, and `style:` are hidden. See [docs/RELEASING.md](docs/RELEASING.md)
-for the one-time setup, the version policy, and the manual publish path.
-
-[rp]: https://github.com/googleapis/release-please
-[tp]: https://docs.npmjs.com/trusted-publishers/
+Version policy, the one-time npm setup, and the manual publish path live in
+[docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
 
