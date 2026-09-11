@@ -12,8 +12,18 @@
     "pi-package",
     "pi",
     "youtube",
+    "youtube-api",
+    "youtube-data-api",
+    "youtube-transcript",
+    "coding-agent",
+    "ai-agent",
+    "agent-tools",
+    "llm-tools",
     "agent-skill",
-    "typescript"
+    "oauth2",
+    "cli",
+    "typescript",
+    "nodejs"
   ],
   "repository": {
     "type": "git",
