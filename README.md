@@ -130,8 +130,10 @@ Every push to `main` is verified by CI on the `engines` floor (`22.19.0`) and
 on the LTS, then packed into the same tarball npm would receive. When the push
 carries Conventional Commits, [release-please][rp] opens a single Release PR:
 the version in `package.json`, the lockfile, and `CHANGELOG.md` move together,
-nothing else. Merging that PR is what tags the release and publishes it to npm
-through [trusted publishing][tp] — OIDC, no `NPM_TOKEN`.
+nothing else. Merging that PR is what tags the release; the tag is then
+dispatched to `publish.yml`, which publishes it to npm through
+[trusted publishing][tp] — OIDC, no `NPM_TOKEN`. Publishing keeps its own file
+because npm's trusted publisher is pinned to a workflow *filename*.
 
 So a commit subject is load-bearing: it decides the changelog section and the
 bump. `feat:` → Added, `fix:` → Fixed, `docs:` → Documentation; `chore:`, `ci:`,

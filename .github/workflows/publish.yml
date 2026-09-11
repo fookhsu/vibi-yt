@@ -1,0 +1,94 @@
+name: Publish to npm
+
+# Dispatch only, on purpose. A Release created with GITHUB_TOKEN does not fire
+# `on: release`, and `release.yml` cannot reach into this file with `needs:`
+# either, so it calls `gh workflow run publish.yml -f ref=<tag>` instead.
+#
+# This file has its own name because npm's trusted publisher is configured per
+# workflow filename and already trusts `publish.yml`. Renaming it silently
+# breaks publishing with a 403.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to publish (defaults to the ref that was dispatched)'
+        required: false
+        type: string
+
+concurrency:
+  # One constant group for every publish run, so two dispatches serialize
+  # instead of both passing the "not yet published" guard and racing to publish.
+  group: npm-publish-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # mints the OIDC token npm exchanges for a publish token
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false # never cache in a release build
+
+      # Trusted publishing requires npm >= 11.5.1; the Node 24 bundle can be older.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - name: Full gate
+        run: npm run ci
+
+      - name: Guard — tag matches, version not already on the registry
+        id: guard
+        env:
+          REF: ${{ inputs.ref || github.ref }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          case "$REF" in
+            refs/tags/v*) expected="${REF#refs/tags/v}" ;;
+            v*)           expected="${REF#v}" ;;
+            *)            expected="" ;;
+          esac
+          if [ -n "$expected" ] && [ "$expected" != "$version" ]; then
+            echo "::error::ref '$REF' does not match package.json version '$version'"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "vibi-yt@$version" version >/dev/null 2>&1; then
+            echo "::notice::vibi-yt@$version is already on the registry — nothing to publish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      # Trusted publishing attaches the provenance attestation automatically;
+      # no NPM_TOKEN and no --provenance flag are involved.
+      - if: steps.guard.outputs.skip != 'true'
+        run: npm publish
+
+      - name: Summary
+        env:
+          REF: ${{ inputs.ref || github.ref }}
+          VERSION: ${{ steps.guard.outputs.version }}
+          SKIP: ${{ steps.guard.outputs.skip }}
+        run: |
+          {
+            echo "### \`vibi-yt@$VERSION\`"
+            echo
+            echo "- ref: \`$REF\`"
+            if [ "$SKIP" = "true" ]; then
+              echo "- result: already published, skipped"
+            else
+              echo "- result: published to npm with provenance"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
