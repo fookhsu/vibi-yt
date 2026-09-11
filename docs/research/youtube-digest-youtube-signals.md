@@ -232,15 +232,16 @@ GET /youtube/v3/subscriptions
 
 ### 10. Developer Policies 是趋势评分的硬边界
 
-查询日官方 [Developer Policies 的 “Handling YouTube Data and Content”](https://developers.google.com/youtube/terms/developer-policies#e.-handling-youtube-data-and-content) 要求：
+查询日官方 [Developer Policies §III.E.4 “Refreshing, Storing, and Displaying API Data” 与 §III.E.5](https://developers.google.com/youtube/terms/developer-policies#e.-handling-youtube-data-and-content) 的边界需要拆成四件事理解：
 
-- 默认不得用 API Data 创建新的 / 派生 data 或 metrics；官方例子明确禁止把 likes、views 等做成一个 score。
-- 非授权公开统计不得保存超过 30 天；其他 Non-Authorized Data 也应在 30 天内删除或刷新。面向用户显示时须使用最新可得 API Data；历史值可以显示，但必须准确标注其时间语境。
-- 使用 YouTube search 的客户端不得修改 / 替换返回结果中的文字、图片或信息；并须清楚标识 YouTube 为来源。
+1. **直接排序 / 展示 API Data。** §III.E.4 要求面向用户展示最新可得 API Data；历史 API Data 只有在准确标注时间语境时才能展示。§III.E.5 禁止 API Client “access or use API Data to create new or derived data or metrics”，并以把 likes、views 等算进 score 为禁止例。另据同页 “YouTube Features” 条款，使用 YouTube search 的客户端不得修改 / 替换结果中的文字、图片、信息或其他内容，并须清楚标识 YouTube 为来源。按这些文字，**原样保留 YouTube 单次响应的服务端顺序**（如 `search.list(order=viewCount)`）并展示未改写的当前 raw statistics，不是在客户端跨数据计算新 metric，可作为未获修订时最保守的降级；但不得把它重排、合成 score，或改称“72h 增长 / YouTube quality”。这是对公开政策文本的合规判断，不替代 YouTube 的书面审核。
+2. **跨快照计算 view growth。** `viewCount(t_now) - viewCount(t_old)`、增长率、age-normalized velocity，以及据此重排，都是客户端从 API Data 新建的 metric / score；技术上能算不代表默认政策允许。未获下述修订时不得实现为 Trending 分数。
+3. **保存公开统计快照。** 第三方公开视频统计属于 Non-Authorized Data；§III.E.4 明确不得保存超过 30 天，届时必须删除或刷新，并应尽快反映 viewcount 更新。**30 天内可暂存 raw snapshot 只是 storage allowance，不会自动授予 derived-metric use**；若保存目的就是计算 view growth，仍受第 2 点限制。
+4. **2026-06-01 的 Analytics & Reporting 修订。** Developer Policies §III.L 及其链接的 [Additional policies for derived metrics and data storage](https://developers.google.com/youtube/terms/derived-metrics-policy) 明确把适用范围限定为：从 2026-06-01 起，已审计、具有 YouTube analytics use case、并通过 standard quota extension request 明确申请派生指标 / 延长统计存储且接受 Developer Policies amendment 的开发者；申请时选择 **Section 5: Use Cases, API Integration, and Feature Implementation → Analytics & Reporting**。获接受后，官方示例才允许 custom scores 及 “daily or weekly Top YouTuber by View Growth”；统计与 derived metrics 可存最长 36 个月，title / creator / description 等仍遵循 30 天规则。普通 quota 增额本身不等于获得这项修订，审批结果也不由文档保证。
 
-2026-06-01 生效的 [Additional policies for derived metrics and data storage](https://developers.google.com/youtube/terms/derived-metrics-policy) 给出例外：开发者需通过标准 quota extension，以 **Analytics & Reporting** 用例接受政策修订。获接受后，官方示例允许 custom scores、content categorization / tagging、sentiment，以及 “daily or weekly Top YouTuber by View Growth”；统计和派生 metrics 最长可存 36 个月，title / creator / description 等非统计数据仍遵循 30 天刷新 / 删除。
+[`videos.list(chart=mostPopular)`](https://developers.google.com/youtube/v3/docs/videos/list) 同理：原样使用一次官方 chart 响应的顺序、正确标为 “YouTube mostPopular chart”，按上述文字可作为未获修订时的保守降级；但它只覆盖 Music / Movies / Gaming，不能约束最近 7 天，也不能被重新解释成 72h momentum。对它做本地综合打分 / velocity 重排仍需修订。由发布时间、直播状态等字段做 eligibility 过滤是否属于允许的产品核心限制，公开政策没有给本 Digest 的专门裁定，仍应在审核中确认。
 
-这意味着“保存 views 快照 → 计算 72h delta → 排 Trending lane”的技术可行性，不等于默认政策许可。未获该修订前，不应把派生 velocity / 综合质量分作为实现既定事实。
+因此，“保存 views 快照 → 计算 72h delta → 排 Trending lane”的技术可行性，不等于默认政策许可。未获修订时能诚实提供的是官方单次排序 / chart 与 raw current statistics，而不是产品派生的 velocity。
 
 ---
 
@@ -286,7 +287,8 @@ GET /youtube/v3/subscriptions
   1. **无历史**：unknown，不伪造；
   2. **候选发布不足 72h**：可展示 raw current views 与年龄，但不能称精确 72h delta；
   3. **有本地采样且政策已允许 derived metrics**：以最接近 `now-72h` 的快照计算，并输出采样间隔 / 覆盖率。
-- 在获得 derived-metrics amendment 前，Trending lane 只能保留 YouTube 原始排序 / 原始统计的可解释呈现或暂停 velocity 评分；是否连重排都合规应在实现前完成政策确认。
+- 在获得 derived-metrics amendment 前，Trending lane 只能原样保留 YouTube 单次响应的官方排序 / chart，并可解释地呈现 raw current statistics；不能做跨快照 delta、增长率、综合 score 或据此重排。
+- **G3 必须二选一：**改写 Trending 定义为“官方单次排序 / chart 的当前热门（不承诺 72h momentum）”，或把 standard quota extension 的 Analytics & Reporting derived-metrics amendment **获批**设为 72h Trending 的实施前置条件；不能把“技术上可算”当作政策许可。
 
 ### C. 类型过滤
 
