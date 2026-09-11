@@ -124,6 +124,23 @@ pi -e .           # try it from the working tree
 The architecture decisions live in `docs/adr/`; the vocabulary lives in
 `CONTEXT.md`.
 
+## Releasing
+
+Every push to `main` is verified by CI on the `engines` floor (`22.19.0`) and
+on the LTS, then packed into the same tarball npm would receive. When the push
+carries Conventional Commits, [release-please][rp] opens a single Release PR:
+the version in `package.json`, the lockfile, and `CHANGELOG.md` move together,
+nothing else. Merging that PR is what tags the release and publishes it to npm
+through [trusted publishing][tp] — OIDC, no `NPM_TOKEN`.
+
+So a commit subject is load-bearing: it decides the changelog section and the
+bump. `feat:` → Added, `fix:` → Fixed, `docs:` → Documentation; `chore:`, `ci:`,
+`test:`, `build:`, and `style:` are hidden. See [docs/RELEASING.md](docs/RELEASING.md)
+for the one-time setup, the version policy, and the manual publish path.
+
+[rp]: https://github.com/googleapis/release-please
+[tp]: https://docs.npmjs.com/trusted-publishers/
+
 ## License
 
 MIT. The project continues the lineage of

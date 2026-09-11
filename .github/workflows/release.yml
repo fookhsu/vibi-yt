@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish to npm (e.g. v0.2.0). Empty = the commit that was dispatched.'
+        required: false
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Opens/updates the Release PR: bumps package.json + package-lock.json and
+  # prepends the new section to CHANGELOG.md. A human merges that PR, and the
+  # merge is what creates the tag and the GitHub Release. No version is ever
+  # written to main without a review.
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          # A PAT makes the Release PR trigger CI. Without the secret the action
+          # falls back to GITHUB_TOKEN, which needs the repo toggle
+          # "Allow GitHub Actions to create and approve pull requests". See
+          # docs/RELEASING.md.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Deliberately in this file: a Release created with GITHUB_TOKEN does not fire
+  # `on: release` in other workflows, so `needs:` is the only reliable coupling.
+  # The npm trusted publisher must therefore name *this* filename.
+  publish:
+    needs: [release-please]
+    if: always() && (needs.release-please.outputs.released == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # mints the OIDC token npm exchanges for a publish token
+    steps:
+      - name: Resolve the ref to publish
+        id: ref
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ] && [ -n "$INPUT_TAG" ]; then
+            value="$INPUT_TAG"
+          elif [ -n "$RELEASE_TAG" ]; then
+            value="$RELEASE_TAG"
+          else
+            value="$SHA"
+          fi
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+          echo "Publishing ref: $value"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.ref.outputs.value }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false # never cache in a release build
+
+      # Trusted publishing requires npm >= 11.5.1; the Node 24 bundle can be older.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - name: Full gate
+        run: npm run ci
+
+      - name: Guard — tag matches, version not already on the registry
+        id: guard
+        env:
+          REF: ${{ steps.ref.outputs.value }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          case "$REF" in
+            v*) expected="${REF#v}" ;;
+            *)  expected="" ;;
+          esac
+          if [ -n "$expected" ] && [ "$expected" != "$version" ]; then
+            echo "::error::ref '$REF' does not match package.json version '$version'"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "vibi-yt@$version" version >/dev/null 2>&1; then
+            echo "::notice::vibi-yt@$version is already on the registry — nothing to publish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Trusted publishing generates the provenance attestation automatically;
+      # no NPM_TOKEN and no --provenance flag are involved.
+      - if: steps.guard.outputs.skip != 'true'
+        run: npm publish
+
+      - name: Summary
+        run: |
+          {
+            echo "### \`vibi-yt@${{ steps.guard.outputs.version }}\`"
+            echo
+            echo "- ref: \`${{ steps.ref.outputs.value }}\`"
+            if [ "${{ steps.guard.outputs.skip }}" = "true" ]; then
+              echo "- result: already published, skipped"
+            else
+              echo "- result: published to npm with provenance"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
