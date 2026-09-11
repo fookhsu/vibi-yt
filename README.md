@@ -111,10 +111,14 @@ Long content does not get silently cut:
   budget. Newer projects may instead see `search.list` capped as its own
   100-calls-per-day bucket. Either way: search sparingly. This is not a bulk
   crawler.
-- **Transcripts are the weak point.** `youtube_transcript` does not go through
-  the Data API; it reads the caption track directly, so it is exposed to
-  breakage whenever YouTube changes the player or the timedtext endpoint.
-  Search, details, and subscriptions use the documented API and are not.
+- **Transcripts are the weak point, and not by choice.** The Data API does
+  expose captions, but `captions.download` requires permission to *edit* the
+  video — so it only reads back captions on videos you own — and
+  `captions.list` returns track metadata, never the text. With no official
+  endpoint for someone else's transcript, `youtube_transcript` reads the caption
+  track the way yt-dlp does, and inherits the breakage when YouTube changes the
+  player or the timedtext endpoint. The other three capabilities use the
+  documented API and do not.
 - **Ten at a time.** Search returns at most 10 results with no pagination;
   details and transcripts take at most 10 IDs per call.
 - **Not every video has captions, and not every language is present.**

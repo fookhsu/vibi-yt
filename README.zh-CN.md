@@ -83,7 +83,7 @@ token 写入 `<agentDir>/vibi-oauth-token.json`（权限 `0600`）。access toke
 ## 配额与限制
 
 - **配额有限，而 `search` 是贵的那一个。** 一个 Google Cloud 项目默认每天有 10,000 个 YouTube Data API v3 单位，而 `search.list` 历来按每次 100 单位计——100 次搜索就是一天的预算。较新的项目可能改为把 `search.list` 限成它自己的每天 100 次调用桶。两种情况都一样：搜索要省着用。这不是批量爬虫。
-- **字幕是弱点。** `youtube_transcript` 不走 Data API；它直接去读字幕轨，所以在 YouTube 改动播放器或 timedtext 端点时会暴露在损坏风险下。搜索、详情与订阅走的是有文档的 API，不受影响。
+- **字幕是弱点，而且不是偷懒。** Data API 确实有字幕接口，但 `captions.download` 需要对该视频的**编辑**权限——只能读回你自己拥有的视频的字幕——而 `captions.list` 只返回轨道元数据，永远不返回文本。既然没有取别人视频字幕的官方端点，`youtube_transcript` 就像 yt-dlp 一样去读字幕轨，也就一并继承了 YouTube 改动播放器或 timedtext 端点时的损坏。另外三项能力走的是有文档的 API，不受影响。
 - **一次十个。** 搜索最多返回 10 条且不支持翻页；详情与字幕每次最多接受 10 个 ID。
 - **不是每个视频都有字幕，也不是每种语言都在。** `youtube_transcript` 会返回 `transcript_unavailable`，并带上它确实找到的语言。
 
