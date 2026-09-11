@@ -42,6 +42,28 @@ _Avoid_: bearer token, session token
 插件自己写的凭据文件（API key 与 OAuth token 各一）。它和 Client json 不是一回事：那个是用户下回来的，这个是我们写出去的。
 _Avoid_: auth file, secrets file, keystore, config
 
+### 发现与推荐
+
+**Interest**:
+用户明确保存的一项内容偏好，以一个主题为核心，可带包含词、排除词、首选语言和地区。它不从用户的沉默或未点击中推断。
+_Avoid_: topic, preference, 兴趣标签
+
+**Digest**:
+按时或按需生成的一组有限视频，按 Interest 和推荐轨道组织；没有内容达到门槛时可以为空。它不是无限滚动的信息流，也不为凑数降低门槛。
+_Avoid_: push, feed, recommendation list, 推荐流
+
+**Trending lane**:
+Digest 中收纳近期发布且显现短期增长势头的视频的轨道；时效性不等于质量。
+_Avoid_: hot list, viral list, 热搜
+
+**Quality lane**:
+Digest 中收纳与 Interest 高度相关、内容扎实且可信的视频的轨道，不要求它正在流行。
+_Avoid_: best videos, 精品榜
+
+**Feedback**:
+用户对推荐作出的显式判断：已看过、喜欢、不感兴趣或屏蔽频道。没有反馈只用于去重，不被解释成负面信号。
+_Avoid_: behavior, implicit preference, click signal
+
 ### 能力与集成
 
 **Subscription**:
