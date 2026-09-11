@@ -64,6 +64,24 @@ _Avoid_: best videos, 精品榜
 用户对推荐作出的显式判断：已看过、喜欢、不感兴趣或屏蔽频道。没有反馈只用于去重，不被解释成负面信号。
 _Avoid_: behavior, implicit preference, click signal
 
+### 数据与政策
+
+**API Data**:
+通过 YouTube API Services 取回的原样字段值。只能原样展示，并保持新鲜度与 YouTube 归因；不得被改写、替换或拿去计算。
+_Avoid_: raw data, 原始数据, 官方数据
+
+**Derived metric**:
+从 API Data 计算、归一、跨视频比较，或用模型判读 API Data 内容得到的新数据、分数或排名。默认政策禁止；只有持有 Analytics & Reporting amendment 的项目可以创建，且在本产品中**默认关闭**，只能由用户显式开启。
+_Avoid_: score, 综合评分, 加权分, estimate
+
+**Own product data**:
+不属于 API Data 的、我们自己的数据与判断：用户 Interest 与 Feedback、非 API 来源的输入、Host 模型的判断。与 API Data 同屏展示时必须醒目声明 not from YouTube。
+_Avoid_: local data, 私有数据, 用户数据
+
+**Analytics & Reporting amendment**:
+Google 自 2026-06-01 起对派生指标的政策修订。项目须在 quota extension 中选择该 use case 并接受 Developer Policies amendment 才生效；获批后才允许官方示例的 custom score / sentiment / categorization，并把统计与派生指标的存储放宽到最长 36 个月。它挂在项目上，且不保证批准。
+_Avoid_: policy exception, whitelist, 白名单, 许可
+
 ### 能力与集成
 
 **Subscription**:
