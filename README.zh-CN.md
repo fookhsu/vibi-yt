@@ -23,12 +23,13 @@ pi install git:github.com/fookhsu/vibi-yt
 
 ## 凭据
 
-两套彼此独立的凭据，**按能力**解析：
+凭据**按能力**解析，两套彼此独立——另有一项能力两者都不需要：
 
 | 能力 | 凭据 |
 | --- | --- |
-| `youtube_search`、`youtube_video_details`、`youtube_transcript` | API key |
+| `youtube_search`、`youtube_video_details` | API key |
 | `youtube_subscriptions` | OAuth 授权 |
+| `youtube_transcript` | 无需——见下文[字幕](#字幕transcript) |
 
 两者之间**不会自动回退**：缺少 API key 时，不会悄悄用一个 OAuth token 顶上。
 
@@ -62,6 +63,10 @@ token 写入 `<agentDir>/vibi-oauth-token.json`（权限 `0600`）。access toke
 
 安全说明：凭据值从不进入模型上下文、工具输出或会话日志。`/youtube:status` 只报来源与元数据，永不报值。
 
+### 字幕（transcript）
+
+`youtube_transcript` **完全不需要凭据**。它走的是 yt-dlp 用的那个非官方播放器端点，不是 Data API（见[配额与限制](#配额与限制)）。API key 只被用来查视频标题，以便给溢写文件命名；所以什么都没配置时字幕照样能取——只是溢写文件叫 `transcript-<videoId>.jsonl`，而不是 `<title>-<videoId>.jsonl`。
+
 ## 命令
 
 | 命令 | 作用 |
@@ -76,7 +81,7 @@ token 写入 `<agentDir>/vibi-oauth-token.json`（权限 `0600`）。access toke
 
 长内容不会被悄悄切掉：
 
-- `detail: "full"` 的结果超过 **8,000 字符**时会落盘为 `<title>-<videoId>.jsonl` 工件。模型收到的是预览（开头与结尾各 2,000 字符的窗口）加路径，并用它自己的文件工具去读。没有任何内容被丢掉。
+- `detail: "full"` 的结果超过 **8,000 字符**时会落盘为 `<title>-<videoId>.jsonl` 工件（没有配置 API key 时标题退化为 `transcript`）。模型收到的是预览（开头与结尾各 2,000 字符的窗口）加路径，并用它自己的文件工具去读。没有任何内容被丢掉。
 - `detail: "compact"` 的结果**永不落盘**，只返回预览窗口。
 - 每个工具结果都把事实作为字段携带：`truncated`、`spilled`、`preview`、`records`。`truncated: true` 意味着模型没有收到全部内容，且它**无法**从溢写文件里取回。成功的溢写不是截断。
 

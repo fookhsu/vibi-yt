@@ -24,12 +24,14 @@ pi install git:github.com/fookhsu/vibi-yt
 
 ## Credentials
 
-Two independent credentials, resolved **per capability**:
+Two independent credentials, resolved **per capability** — with one capability
+that needs neither:
 
 | Capability | Credential |
 | --- | --- |
-| `youtube_search`, `youtube_video_details`, `youtube_transcript` | API key |
+| `youtube_search`, `youtube_video_details` | API key |
 | `youtube_subscriptions` | OAuth authorization |
+| `youtube_transcript` | none — see [Transcripts](#transcripts) |
 
 There is no automatic fallback between them: a missing API key is never
 silently satisfied by an OAuth token.
@@ -78,6 +80,15 @@ Security notes: credential values never enter the model context, tool output,
 or the session log. `/youtube:status` reports sources and metadata only — never
 a value.
 
+### Transcripts
+
+`youtube_transcript` needs no credential at all. It reads the caption track
+through the same unofficial player endpoint yt-dlp uses, not the Data API (see
+[Quotas and limits](#quotas-and-limits)). An API key is consulted only to look up
+video titles for spill filenames, so with nothing configured transcripts still
+work — spill files are just named `transcript-<videoId>.jsonl` instead of
+`<title>-<videoId>.jsonl`.
+
 ## Commands
 
 | Command | What it does |
@@ -93,7 +104,8 @@ a value.
 Long content does not get silently cut:
 
 - A `detail: "full"` result over **8,000 characters** is written to a
-  `<title>-<videoId>.jsonl` artifact. The model gets a preview (the opening and
+  `<title>-<videoId>.jsonl` artifact — the title falls back to `transcript` when
+  no API key is configured. The model gets a preview (the opening and
   closing 2,000-character windows) plus the path, and reads the file with its
   own file tool. Nothing is lost.
 - A `detail: "compact"` result never spills; it returns the preview windows
