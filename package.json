@@ -1,6 +1,6 @@
 {
   "name": "vibi-yt",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Read-only YouTube capabilities for coding agents: search, video details, transcripts, and your subscriptions, as Pi tools and user commands.",
   "type": "module",
   "engines": {
