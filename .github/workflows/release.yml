@@ -47,5 +47,8 @@ jobs:
         if: steps.release.outputs.release_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job never checks out the repo (release-please works over the
+          # API), so `gh` cannot resolve the repository from git. Pin it.
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ steps.release.outputs.tag_name }}
         run: gh workflow run publish.yml --ref main -f "ref=$TAG"
